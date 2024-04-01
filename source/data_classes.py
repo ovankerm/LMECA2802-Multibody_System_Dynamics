@@ -4,12 +4,17 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 
-@dataclass
+@dataclass(frozen=True)
 class body_data:
+    """
+    test docstring
+    """
     m: float = 0.
     Iz: float = 0.
     dii: ArrayLike = field(default_factory=lambda: np.array([0., 0.]))
-    joint_type: str = "pri"
+    dik: ArrayLike = field(default_factory=lambda: np.array([]))
+    joint_type: str = 'prix'
+    children: ArrayLike = field(default_factory=lambda: np.array([]))
 
 
 @dataclass
@@ -27,5 +32,5 @@ if __name__ == "__main__":
     data = sim_data()
     print(data)
     body = body_data()
-
     print(body)
+    help(body_data)
