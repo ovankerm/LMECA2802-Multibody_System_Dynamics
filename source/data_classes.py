@@ -4,10 +4,28 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 
-@dataclass(frozen=True)
+@dataclass
 class body_data:
     """
-    test docstring
+    Data class containing all the data related to a body
+
+    Parameters
+    ----------
+    m : float
+        mass of the body
+    Iz : float
+        inertia of the body along the z axis
+    dii : numpy array
+        position of the body's CG wrt to the attachement point
+    dik : numpy array
+        numpy array of size (N, 2) containing the attachement point of the body's children
+    joint_type : string
+        gives the type of the joint linked to this body, the options are:
+            - 'rev' for a revolute joint
+            - 'prix' for a prismatic joint along the x-direction
+            - 'priy' for a prismatic joint along the y-direction
+    children : numpy array
+        array containing the indices of the childen bodies
     """
     m: float = 0.
     Iz: float = 0.
