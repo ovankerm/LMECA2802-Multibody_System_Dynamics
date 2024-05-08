@@ -1,9 +1,10 @@
 import numpy as np
-from data_classes import body_data
+from source.data_classes import body_data
+from copy import deepcopy
 
 
 class Body:
-    def __init__(self, data: body_data, q0: float = 0., qd0: float = 0) -> None:
+    def __init__(self, data: body_data, joint_force: str = 'none', q0: float = 0., qd0: float = 0) -> None:
         """
         Class representing a body
 
@@ -18,7 +19,8 @@ class Body:
         -------
         None
         """
-        self.data = data
+        self.data = deepcopy(data)
+        self.joint_force = joint_force
         self.q = q0
         self.qd = qd0
 
@@ -35,7 +37,7 @@ class Body:
         R : numpy array
             (2x2) numpy array representing the rotation matrix between the body and its parent
         """
-        if self.data.joint_type == 'rev': return np.array([[np.cos(self.q), np.sin(self.q)], [-np.sin(self.q), np.cos(self.q)]])
+        if self.data.joint_type == 'rev': return np.array([[np.cos(self.q), -np.sin(self.q)], [np.sin(self.q), np.cos(self.q)]])
         else: return np.eye(2)
 
     def get_z(self) -> np.ndarray:
@@ -70,7 +72,7 @@ class Body:
         """
         return self.data.dii + self.get_z()
 
-    def get_dikz(self) -> np.ndarray:
+    def get_dikz(self, children_index) -> np.ndarray:
         """
         Gives the vectors of the children attachement points
 
@@ -83,10 +85,7 @@ class Body:
         dikz : numpy array
             numpy array of size (N, 2) containing the position of the attachement point of the N children
         """
-        to_return = np.copy(self.data.dik)
-        for i in to_return:
-            i += self.get_z()
-        return to_return
+        return self.data.dik[np.where(self.data.children == children_index)[0][0]] + self.get_z()
 
     def get_omega(self) -> float:
         """
@@ -104,11 +103,35 @@ class Body:
         if self.data.joint_type == 'rev': return self.qd
         else: return 0.
 
-    def get_phi(self) -> float:
-        return float(self.data.joint_type == 'rev')
+    def get_phi(self) -> int:
+        return int(self.data.joint_type == 'rev')
 
     def get_psi(self) -> np.ndarray:
-        return np.array([self.data.joint_type == 'prix', self.data.joint_type == 'priy'], dtype=float)
+        return np.array([self.data.joint_type == 'prix', self.data.joint_type == 'priy'], dtype=int)
+
+    def get_children(self) -> np.ndarray:
+        return self.data.children
+
+    def get_m(self):
+        return self.data.m
+
+    def get_Iz(self):
+        return self.data.Iz
+
+    def get_Fext(self):
+        return np.array([0., 0.])
+
+    def get_Lext(self):
+        return 0.
+
+    def get_joint_force(self):
+        if self.joint_force == 'none':
+            return 0.
+        elif self.joint_force == 'beam':
+            return -8.5e6 * self.q - 1e4 * self.qd
+        elif self.joint_force == 'fixed':
+            return -1e10 * self.q - 1e5 * self.qd
+
 
 
 

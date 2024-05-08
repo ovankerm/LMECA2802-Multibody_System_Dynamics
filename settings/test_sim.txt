@@ -1,2 +1,3 @@
--g -9.81
--N_bodies 10
+-gx 0.
+-gy -9.81
+-N_bodies 9
