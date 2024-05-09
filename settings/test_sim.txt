@@ -1,3 +1,6 @@
 -gx 0.
 -gy -9.81
--N_bodies 9
+-t0 0.
+-tf 3.
+-N_bodies 7
+-beams beam.txt

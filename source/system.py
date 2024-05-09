@@ -35,7 +35,6 @@ class System:
         self.M = np.zeros((N_bodies + 1, N_bodies + 1), dtype=float)
         self.c = np.zeros(N_bodies + 1, dtype=float)
 
-
     def push_q(self):
         for i in range(self.N_bodies):
             self.bodies[i+1].q = self.q[i]
@@ -57,12 +56,14 @@ class System:
         prix_data = body_data(joint_type='prix', dii=np.array([0, 0]), dik=np.array([[0, 0]]), children=np.array([self.first_index+1]))
         self.bodies[self.first_index] = Body(prix_data, joint_force=joint_forces)
         self.inbody[self.first_index] = parent
+        posx_ind = self.first_index - 1
         self.first_index += 1
 
         # make the T2 joint
         priy_data = body_data(joint_type='priy', dii=np.array([0, 0]), dik=np.array([[0, 0]]), children=np.array([self.first_index+1]))
         self.bodies[self.first_index] = Body(priy_data, joint_force=joint_forces)
         self.inbody[self.first_index] = self.first_index - 1
+        posy_ind = self.first_index - 1
         self.first_index += 1
 
         half_length = N_sections//2
@@ -70,6 +71,7 @@ class System:
         c_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([0, 0]), dik=np.array([[-length/2, 0], [length/2, 0]]), children=np.array([self.first_index+1, self.first_index+1+half_length]))
         self.bodies[self.first_index] = Body(c_body_data, joint_force=joint_forces)
         self.inbody[self.first_index] = self.first_index - 1
+        angle_ind = self.first_index - 1
 
         l_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([-length/2, 0]), dik=np.array([[-length, 0]]), children=np.array([self.first_index+2]))
         self.bodies[self.first_index + 1] = Body(l_body_data, joint_force='beam')
@@ -97,6 +99,8 @@ class System:
         self.inbody[self.first_index + 2 * half_length] = self.first_index + 2 * half_length - 1
 
         self.first_index += N_sections
+
+        return posx_ind, posy_ind, angle_ind
 
     def make_bodies(self):
         base = body_data(dik=np.array([0, 0]), children=np.array([1]))
@@ -193,6 +197,5 @@ class System:
 
 if __name__ == "__main__":
     sys = System(10)
-
 
     print(sys.bodies)

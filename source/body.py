@@ -23,6 +23,8 @@ class Body:
         self.joint_force = joint_force
         self.q = q0
         self.qd = qd0
+        self.Fext = np.zeros(2)
+        self.Lext = 0
 
     def get_R(self) -> np.ndarray:
         """
@@ -119,10 +121,10 @@ class Body:
         return self.data.Iz
 
     def get_Fext(self):
-        return np.array([0., 0.])
+        return self.Fext
 
     def get_Lext(self):
-        return 0.
+        return self.Lext
 
     def get_joint_force(self):
         if self.joint_force == 'none':
@@ -131,6 +133,12 @@ class Body:
             return -8.5e6 * self.q - 1e4 * self.qd
         elif self.joint_force == 'fixed':
             return -1e10 * self.q - 1e5 * self.qd
+
+    def set_Fext(self, Fext):
+        self.Fext = Fext
+
+    def set_Lext(self, Lext):
+        self.Lext = Lext
 
 
 
