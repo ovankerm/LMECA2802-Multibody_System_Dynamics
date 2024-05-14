@@ -30,7 +30,7 @@ class body_data:
     m: float = 0.
     Iz: float = 0.
     dii: ArrayLike = field(default_factory=lambda: np.array([0., 0.]))
-    dik: ArrayLike = field(default_factory=lambda: np.array([]))
+    dik: ArrayLike = field(default_factory=lambda: [])
     joint_type: str = 'prix'
     children: ArrayLike = field(default_factory=lambda: np.array([]))
     dis: ArrayLike = field(default_factory=lambda: np.array([]))

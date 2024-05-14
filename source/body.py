@@ -39,6 +39,22 @@ class Body:
         R : numpy array
             (2x2) numpy array representing the rotation matrix between the body and its parent
         """
+        if self.data.joint_type == 'rev': return np.array([[np.cos(self.q), np.sin(self.q)], [-np.sin(self.q), np.cos(self.q)]])
+        else: return np.eye(2)
+
+    def get_R_inv(self) -> np.ndarray:
+        """
+        Gives the 2D rotation matrix
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        R : numpy array
+            (2x2) numpy array representing the rotation matrix between the body and its parent
+        """
         if self.data.joint_type == 'rev': return np.array([[np.cos(self.q), -np.sin(self.q)], [np.sin(self.q), np.cos(self.q)]])
         else: return np.eye(2)
 
@@ -57,6 +73,23 @@ class Body:
         """
         if self.data.joint_type == 'prix': return np.array([self.q, 0.])
         elif self.data.joint_type == 'priy': return np.array([0., self.q])
+        else: return np.zeros(2)
+
+    def get_z_dot(self) -> np.ndarray:
+        """
+        Gives the z dot vector
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        z_dot : numpy array
+            numpy array representing the joint velocity
+        """
+        if self.data.joint_type == 'prix': return np.array([self.qd, 0.])
+        elif self.data.joint_type == 'priy': return np.array([0., self.qd])
         else: return np.zeros(2)
 
     def get_diiz(self) -> np.ndarray:
@@ -134,11 +167,18 @@ class Body:
         elif self.joint_force == 'fixed':
             return -1e10 * self.q - 1e5 * self.qd
 
-    def set_Fext(self, Fext):
-        self.Fext = Fext
+    def add_Fext(self, Fext):
+        self.Fext += Fext
 
-    def set_Lext(self, Lext):
-        self.Lext = Lext
+    def add_Lext(self, Lext):
+        self.Lext += Lext
+
+    def reset_Fext(self):
+        self.Fext = np.zeros(2)
+
+    def reset_Lext(self):
+        self.Lext = 0
+
 
 
 

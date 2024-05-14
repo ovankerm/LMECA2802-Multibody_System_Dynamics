@@ -1,0 +1,9 @@
++gx 0.
++gy -9.81
++t0 0.
++tf 1.
++N_bodies 7
++save_forces 1
++beams c_beam.txt
++forces f1 base c_beam_l f2 base c_beam_r
++dis -5. 0. -1. 0. 5. 0. 1. 0.

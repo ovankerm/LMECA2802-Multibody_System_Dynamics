@@ -3,3 +3,6 @@ tests/
 __pycache__
 test.py
 output.txt
+*.pdf
+results/
+images/

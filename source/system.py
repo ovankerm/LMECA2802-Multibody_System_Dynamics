@@ -2,9 +2,11 @@ from source.body import Body
 from source.data_classes import body_data
 import numpy as np
 from numpy.linalg import solve
+from source.forces import Force
+
 
 class System:
-    def __init__(self, N_bodies, g=np.array([0, -9.81])):
+    def __init__(self, N_bodies, g=np.array([0, -9.81]), save_forces: bool = False, forces_filename: str = ''):
         self.N_bodies = N_bodies
         self.bodies = np.empty(N_bodies + 1, dtype=Body)
 
@@ -35,12 +37,34 @@ class System:
         self.M = np.zeros((N_bodies + 1, N_bodies + 1), dtype=float)
         self.c = np.zeros(N_bodies + 1, dtype=float)
 
-    def push_q(self):
-        for i in range(self.N_bodies):
-            self.bodies[i+1].q = self.q[i]
-            self.bodies[i+1].qd = self.qd[i]
+        self.bodies_names = {}
+        self.bodies_names['base'] = 0
 
-    def make_beam(self, N_sections: int, parent: int, length: float = 2., mass: float = 50., Iz: float = 50., fixed: bool = False, dik: np.ndarray = np.array([0, 0])):
+        self.forces = {}
+
+        self.save_forces = save_forces
+        if save_forces:
+            self.force_file = open(forces_filename, 'w')
+
+    def set_forces(self, forces, dis):
+        if len(forces) % 3 != 0:
+            raise ValueError('len(forces) should be divisible by 3')
+
+        N_forces = len(forces)//3
+        if len(dis) != 4 * N_forces:
+            raise ValueError('len(dis) should be equal to 4 times the number of forces')
+
+        for i in range(N_forces):
+            self.forces[forces[3 * i]] = Force(self.bodies_names[forces[3 * i + 1]], self.bodies_names[forces[3 * i + 2]], dis[4*i:4*i+2], dis[4*i+2:4*i+4])
+
+        if self.save_forces:
+            self.force_file.write('t')
+            for f in self.forces:
+                for i in range(2):
+                    self.force_file.write(' ' + f + f'_{i}')
+            self.force_file.write('\n')
+
+    def make_beam(self, N_sections: int, parent: int, length: float = 2., mass: float = 50., Iz: float = 50., fixed: bool = False, dik: np.ndarray = np.array([0, 0]), b_names = 'NO_NAMES'):
         if N_sections % 2 != 1:
             raise ValueError('N_sections should be odd')
         if self.first_index + N_sections + 2 > self.N_bodies + 1:
@@ -49,18 +73,18 @@ class System:
         joint_forces = 'fixed' if fixed else 'none'
 
         # add the correct data to the parent body
-        self.bodies[parent].data.dik = np.append(self.bodies[parent].data.dik, dik)
+        self.bodies[parent].data.dik.append(dik)
         self.bodies[parent].data.children = np.append(self.bodies[parent].data.children, int(self.first_index))
 
         # make the T1 joint
-        prix_data = body_data(joint_type='prix', dii=np.array([0, 0]), dik=np.array([[0, 0]]), children=np.array([self.first_index+1]))
+        prix_data = body_data(joint_type='prix', dii=np.array([0, 0]), dik=[np.array([0, 0])], children=np.array([self.first_index+1]))
         self.bodies[self.first_index] = Body(prix_data, joint_force=joint_forces)
         self.inbody[self.first_index] = parent
         posx_ind = self.first_index - 1
         self.first_index += 1
 
         # make the T2 joint
-        priy_data = body_data(joint_type='priy', dii=np.array([0, 0]), dik=np.array([[0, 0]]), children=np.array([self.first_index+1]))
+        priy_data = body_data(joint_type='priy', dii=np.array([0, 0]), dik=[np.array([0, 0])], children=np.array([self.first_index+1]))
         self.bodies[self.first_index] = Body(priy_data, joint_force=joint_forces)
         self.inbody[self.first_index] = self.first_index - 1
         posy_ind = self.first_index - 1
@@ -68,69 +92,116 @@ class System:
 
         half_length = N_sections//2
         # make the center body
-        c_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([0, 0]), dik=np.array([[-length/2, 0], [length/2, 0]]), children=np.array([self.first_index+1, self.first_index+1+half_length]))
+        c_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([0, 0]), dik=[np.array([-length/2, 0]), np.array([length/2, 0])], children=np.array([self.first_index+1, self.first_index+1+half_length]))
         self.bodies[self.first_index] = Body(c_body_data, joint_force=joint_forces)
         self.inbody[self.first_index] = self.first_index - 1
         angle_ind = self.first_index - 1
 
-        l_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([-length/2, 0]), dik=np.array([[-length, 0]]), children=np.array([self.first_index+2]))
-        self.bodies[self.first_index + 1] = Body(l_body_data, joint_force='beam')
-        self.inbody[self.first_index + 1] = self.first_index
+        if N_sections == 3:
+            l_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([-length/2, 0]))
+            self.bodies[self.first_index + 1] = Body(l_body_data, joint_force='beam')
+            self.inbody[self.first_index + 1] = self.first_index
+            if b_names != 'NO_NAMES':
+                self.bodies_names[b_names[0]] = self.first_index + 1
+            r_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([length/2, 0]))
+            self.bodies[self.first_index + 1 + half_length] = Body(r_body_data, joint_force='beam')
+            self.inbody[self.first_index + 1 + half_length] = self.first_index
+            if b_names != 'NO_NAMES':
+                self.bodies_names[b_names[1]] = self.first_index + 1 + half_length
+        else:
+            l_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([-length/2, 0]), dik=[np.array([-length, 0])], children=np.array([self.first_index+2]))
+            self.bodies[self.first_index + 1] = Body(l_body_data, joint_force='beam')
+            self.inbody[self.first_index + 1] = self.first_index
 
-        r_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([length/2, 0]), dik=np.array([[length, 0]]), children=np.array([self.first_index+2+half_length]))
-        self.bodies[self.first_index + 1 + half_length] = Body(r_body_data, joint_force='beam')
-        self.inbody[self.first_index + 1 + half_length] = self.first_index
+            r_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([length/2, 0]), dik=[np.array([length, 0])], children=np.array([self.first_index+2+half_length]))
+            self.bodies[self.first_index + 1 + half_length] = Body(r_body_data, joint_force='beam')
+            self.inbody[self.first_index + 1 + half_length] = self.first_index
 
-        for i in range(1, half_length - 1):
-            l_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([-length/2, 0]), dik=np.array([[-length, 0]]), children=np.array([self.first_index+2+i]))
-            self.bodies[self.first_index + 1 + i] = Body(l_body_data, joint_force='beam')
-            self.inbody[self.first_index + 1 + i] = self.first_index + i
+            for i in range(1, half_length - 1):
+                l_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([-length/2, 0]), dik=[np.array([-length, 0])], children=np.array([self.first_index+2+i]))
+                self.bodies[self.first_index + 1 + i] = Body(l_body_data, joint_force='beam')
+                self.inbody[self.first_index + 1 + i] = self.first_index + i
 
-            r_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([length/2, 0]), dik=np.array([[length, 0]]), children=np.array([self.first_index+2+i+half_length]))
-            self.bodies[self.first_index + 1 + half_length + i] = Body(r_body_data, joint_force='beam')
-            self.inbody[self.first_index + 1 + half_length + i] = self.first_index + half_length + i
+                r_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([length/2, 0]), dik=[np.array([length, 0])], children=np.array([self.first_index+2+i+half_length]))
+                self.bodies[self.first_index + 1 + half_length + i] = Body(r_body_data, joint_force='beam')
+                self.inbody[self.first_index + 1 + half_length + i] = self.first_index + half_length + i
 
-        l_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([-length/2, 0]))
-        self.bodies[self.first_index + half_length] = Body(l_body_data, joint_force='beam')
-        self.inbody[self.first_index + half_length] = self.first_index + half_length - 1
+            l_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([-length/2, 0]))
+            self.bodies[self.first_index + half_length] = Body(l_body_data, joint_force='beam')
+            self.inbody[self.first_index + half_length] = self.first_index + half_length - 1
+            if b_names != 'NO_NAMES':
+                self.bodies_names[b_names[0]] = self.first_index + half_length
 
-        r_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([length/2, 0]))
-        self.bodies[self.first_index + 2 * half_length] = Body(r_body_data, joint_force='beam')
-        self.inbody[self.first_index + 2 * half_length] = self.first_index + 2 * half_length - 1
+            r_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([length/2, 0]))
+            self.bodies[self.first_index + 2 * half_length] = Body(r_body_data, joint_force='beam')
+            self.inbody[self.first_index + 2 * half_length] = self.first_index + 2 * half_length - 1
+            if b_names != 'NO_NAMES':
+                self.bodies_names[b_names[1]] = self.first_index + 2 * half_length
 
         self.first_index += N_sections
 
         return posx_ind, posy_ind, angle_ind
 
-    def make_bodies(self):
-        base = body_data(dik=np.array([0, 0]), children=np.array([1]))
-        self.bodies[0] = Body(base)
-        """
-        body_d = body_data(joint_type='rev', dii=np.array([0, l/2]), m=m, Iz=m*l*l/12)
-        self.bodies[1] = Body(body_d)
-        self.inbody[1] = 0
-        """
-        body_ = body_data(joint_type='prix', dii=np.array([0, 0]), dik=np.array([[0, 0]]), children=np.array([2]))
-        self.bodies[1] = Body(body_)
-        self.inbody[1] = 0
-        body_d = body_data(joint_type='rev', dii=np.array([0, 0]), m=50, Iz=50, dik=np.array([[2, 0]]), children=np.array([3]))
-        self.bodies[2] = Body(body_d)
-        self.inbody[2] = 1
-        body_dd = body_data(joint_type='rev', dii=np.array([1, 0]), m=50, Iz=50, dik=np.array([[2, 0]]), children=np.array([4]))
-        self.bodies[3] = Body(body_dd)
-        self.inbody[3] = 2
-        body_ddd = body_data(joint_type='rev', dii=np.array([1, 0]), m=50, Iz=50, dik=np.array([[2, 0]]), children=np.array([5]))
-        self.bodies[4] = Body(body_ddd)
-        self.inbody[4] = 3
-        body_dddd = body_data(joint_type='rev', dii=np.array([1, 0]), m=50, Iz=50, dik=np.array([[2, 0]]), children=np.array([6]))
-        self.bodies[5] = Body(body_dddd)
-        self.inbody[5] = 4
-        body_ddddd = body_data(joint_type='rev', dii=np.array([1, 0]), m=50, Iz=50)
-        self.bodies[6] = Body(body_ddddd)
-        self.inbody[6] = 5
+    def push_q(self):
+        for i in range(self.N_bodies):
+            self.bodies[i+1].q = self.q[i]
+            self.bodies[i+1].qd = self.qd[i]
 
-    def get_qdd(self):
+    def compute_forces(self, t):
+        vel = np.zeros((2, 2))
+        pos = np.zeros((2, 2))
+        R_glob = np.zeros((2, 2, 2))
+        for i, f in self.forces.items():
+            if i == 'wind':
+                index = f.get_indices()[0]
+                dis = f.get_dis()[0]
+                R_glob[0] = self.bodies[index].get_R()
+                i = self.inbody[index]
+                while i != 0:
+                    R_glob[0] = R_glob[0] @ self.bodies[i].get_R()
+                    i = self.inbody[i]
+                Force = f.get_wind_force(t)
+                F0 = R_glob[0] @ Force
+                self.bodies[index].add_Fext(F0)
+                self.bodies[index].add_Lext(np.cross(dis, F0))
+                if self.save_forces:
+                    self.force_file.write(' %.4e %.4e'%(Force[0], Force[1]))
+
+            else:
+                indices = f.get_indices()
+                dis = f.get_dis()
+                for k in range(2):
+                    R_glob[k] = self.bodies[indices[k]].get_R()
+                    R_inv = self.bodies[indices[k]].get_R_inv()
+                    disz = self.bodies[indices[k]].get_diiz() + dis[k]
+                    pos[k] = R_inv @ disz
+                    vel[k] = R_inv @ (self.omega[indices[k]] * np.array([-disz[1], disz[0]]) + self.bodies[indices[k]].get_psi() * self.bodies[indices[k]].qd)
+                    i_prev = indices[k]
+                    i = self.inbody[i_prev]
+                    while i != 0:
+                        R_glob[k] = R_glob[k] @ self.bodies[i].get_R()
+                        R_inv = self.bodies[i].get_R_inv()
+                        dikz = self.bodies[i].get_dikz(i_prev)
+                        pos[k] = R_inv @ (dikz + pos[k])
+                        vel[k] = R_inv @ (vel[k] + self.omega[i] * np.array([-dikz[1], dikz[0]]) + self.bodies[i].get_psi() * self.bodies[i].qd)
+                        i_prev = i
+                        i = self.inbody[i_prev]
+                Force = f.get_force(pos[0], pos[1], vel[0], vel[1])
+                F0 = R_glob[0] @ Force
+                F1 = R_glob[1] @ (-Force)
+                self.bodies[indices[0]].add_Fext(F0)
+                self.bodies[indices[1]].add_Fext(F1)
+                self.bodies[indices[0]].add_Lext(np.cross(dis[0], F0))
+                self.bodies[indices[1]].add_Lext(np.cross(dis[1], F1))
+                if self.save_forces:
+                    self.force_file.write(' %.4e %.4e'%(Force[0], Force[1]))
+
+
+    def get_qdd(self, t):
+        # forwards loop
         for i in range(1, self.N_bodies + 1):
+            self.bodies[i].reset_Fext()
+            self.bodies[i].reset_Lext()
             h = self.inbody[i]
             self.omega[i] = self.omega[h] + self.bodies[i].get_phi() * self.bodies[i].qd
             self.omega_c_dot[i] = self.omega_c_dot[h]
@@ -143,6 +214,10 @@ class System:
                 self.O_M[i, k] = self.O_M[h, k] + (k == i) * self.bodies[i].get_phi()
                 self.A_M[i, k] = self.bodies[i].get_R() @ (self.A_M[h, k] + self.O_M[h, k] * np.array([-dhi[1], dhi[0]])) + (k == i) * self.bodies[i].get_psi()
 
+        self.compute_forces(t)
+        if self.save_forces: self.force_file.write('\n')
+
+        # backwards loop
         for i in range(self.N_bodies, 0, -1):
             W_c = self.bodies[i].get_m() * (self.alpha_c[i] + self.beta_c[i] @ self.bodies[i].get_diiz()) - self.bodies[i].get_Fext()
             F_c = np.zeros(2)
@@ -188,8 +263,9 @@ class System:
 
         to_return = np.zeros(2 * self.N_bodies, dtype=float)
         to_return[:self.N_bodies] = np.copy(self.qd)
-        qdd = self.get_qdd()
-        # print(f't = %.4f, qdd = {qdd}'%(t))
+
+        if self.save_forces: self.force_file.write('%.4e'%(t))
+        qdd = self.get_qdd(t)
         to_return[self.N_bodies:] = qdd
 
         return to_return

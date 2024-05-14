@@ -1,0 +1,9 @@
++N_sections 5
++m 50.
++Iz 50.
++l 2.
++parent 0
++dik 0. 0.
++pos 0. 0.
++angle 0.
++bodies_names b_beam_l b_beam_r
