@@ -29,4 +29,5 @@ for k, t in enumerate(times):
 
 ax.legend()
 ax.grid()
+fig.savefig('./images/beam_'+sim_name+'.pdf', format='pdf')
 plt.show()
