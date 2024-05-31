@@ -1,0 +1,9 @@
++N_sections 5
++m 21.650635
++Iz 21.650635
++l 0.8660254
++parent 0
++dik 0. 0.
++pos 0. 2.1650635
++angle -1.570796327
++bodies_names v_beam_l 2 v_beam_r 4

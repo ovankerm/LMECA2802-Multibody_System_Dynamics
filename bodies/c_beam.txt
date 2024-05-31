@@ -6,4 +6,4 @@
 +dik 0. 0.
 +pos 0. 0.
 +angle 0.
-+bodies_names c_beam_l c_beam_r
++bodies_names c_beam_l 2 c_beam_r 4 c_beam_c 0

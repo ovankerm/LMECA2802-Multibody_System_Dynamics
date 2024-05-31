@@ -1,0 +1,10 @@
++gx 0.
++gy -9.81
++t0 0.
++tf 50.
++N_bodies 35
++save_forces 1
++save_positions l_beam_r
++beams c_beam.txt l_beam.txt r_beam.txt cc_beam.txt v_beam.txt
++forces f1 c_beam_l l_beam_l f2 l_beam_r r_beam_l f3 c_beam_r r_beam_r f4 base l_beam_l f5 base r_beam_r f6 l_beam_c cc_beam_l f7 r_beam_c cc_beam_r f8 cc_beam_c v_beam_l f9 c_beam_c v_beam_r wind l_beam_r base
++dis -1. 0. -1. 0. 1. 0. -1. 0. 1. 0. 1. 0. -5. 0. -1. 0. 5. 0. 1. 0. 0. 0. -.5 0. 0. 0. .5 0. 0. 0. -.4330127 0. 0. 0. .4330127 0. 1. 0. 0. 0.

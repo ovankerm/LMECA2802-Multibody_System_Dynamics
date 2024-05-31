@@ -6,7 +6,7 @@ from source.forces import Force
 
 
 class System:
-    def __init__(self, N_bodies, g=np.array([0, -9.81]), save_forces: bool = False, forces_filename: str = ''):
+    def __init__(self, N_bodies, g=np.array([0, -9.81]), save_forces: bool = False, forces_filename: str = '', positions_filename: str='', positions_to_save: str=np.array([])):
         self.N_bodies = N_bodies
         self.bodies = np.empty(N_bodies + 1, dtype=Body)
 
@@ -45,6 +45,17 @@ class System:
         self.save_forces = save_forces
         if save_forces:
             self.force_file = open(forces_filename, 'w')
+
+        self.save_pos = len(positions_to_save) != 0
+        self.positions_to_save = np.copy(positions_to_save)
+        if self.save_pos:
+            self.positions_file = open(positions_filename, 'w')
+            self.positions_file.write('t')
+            for pos in positions_to_save:
+                for i in range(2):
+                    self.positions_file.write(' ' + pos + f'_{i}')
+            self.positions_file.write('\n')
+
 
     def set_forces(self, forces, dis):
         if len(forces) % 3 != 0:
@@ -101,13 +112,10 @@ class System:
             l_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([-length/2, 0]))
             self.bodies[self.first_index + 1] = Body(l_body_data, joint_force='beam')
             self.inbody[self.first_index + 1] = self.first_index
-            if b_names != 'NO_NAMES':
-                self.bodies_names[b_names[0]] = self.first_index + 1
+
             r_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([length/2, 0]))
             self.bodies[self.first_index + 1 + half_length] = Body(r_body_data, joint_force='beam')
             self.inbody[self.first_index + 1 + half_length] = self.first_index
-            if b_names != 'NO_NAMES':
-                self.bodies_names[b_names[1]] = self.first_index + 1 + half_length
         else:
             l_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([-length/2, 0]), dik=[np.array([-length, 0])], children=np.array([self.first_index+2]))
             self.bodies[self.first_index + 1] = Body(l_body_data, joint_force='beam')
@@ -129,14 +137,14 @@ class System:
             l_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([-length/2, 0]))
             self.bodies[self.first_index + half_length] = Body(l_body_data, joint_force='beam')
             self.inbody[self.first_index + half_length] = self.first_index + half_length - 1
-            if b_names != 'NO_NAMES':
-                self.bodies_names[b_names[0]] = self.first_index + half_length
 
             r_body_data = body_data(m=mass, Iz=Iz, joint_type='rev', dii=np.array([length/2, 0]))
             self.bodies[self.first_index + 2 * half_length] = Body(r_body_data, joint_force='beam')
             self.inbody[self.first_index + 2 * half_length] = self.first_index + 2 * half_length - 1
+
             if b_names != 'NO_NAMES':
-                self.bodies_names[b_names[1]] = self.first_index + 2 * half_length
+                for i in range(len(b_names)//2):
+                    self.bodies_names[b_names[2 * i]] = self.first_index + int(b_names[2 * i + 1])
 
         self.first_index += N_sections
 
@@ -186,6 +194,12 @@ class System:
                         vel[k] = R_inv @ (vel[k] + self.omega[i] * np.array([-dikz[1], dikz[0]]) + self.bodies[i].get_psi() * self.bodies[i].qd)
                         i_prev = i
                         i = self.inbody[i_prev]
+                for body in self.positions_to_save:
+                    if self.bodies_names[body] == indices[0]:
+                        self.positions_file.write(' %.4e %.4e'%(pos[0][0], pos[0][1]))
+                    elif self.bodies_names[body] == indices[1]:
+                        self.positions_file.write(' %.4e %.4e'%(pos[1][0], pos[1][1]))
+
                 Force = f.get_force(pos[0], pos[1], vel[0], vel[1])
                 F0 = R_glob[0] @ Force
                 F1 = R_glob[1] @ (-Force)
@@ -216,6 +230,7 @@ class System:
 
         self.compute_forces(t)
         if self.save_forces: self.force_file.write('\n')
+        if self.save_pos: self.positions_file.write('\n')
 
         # backwards loop
         for i in range(self.N_bodies, 0, -1):
@@ -265,6 +280,7 @@ class System:
         to_return[:self.N_bodies] = np.copy(self.qd)
 
         if self.save_forces: self.force_file.write('%.4e'%(t))
+        if self.save_forces: self.positions_file.write('%.4e'%(t))
         qdd = self.get_qdd(t)
         to_return[self.N_bodies:] = qdd
 

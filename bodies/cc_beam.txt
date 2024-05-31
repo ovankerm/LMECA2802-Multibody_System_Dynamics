@@ -1,0 +1,9 @@
++N_sections 5
++m 25.
++Iz 25.
++l 1.
++parent 0
++dik 0. 0.
++pos 0. 4.330127
++angle 0.
++bodies_names cc_beam_l 2 cc_beam_r 4 cc_beam_c 0

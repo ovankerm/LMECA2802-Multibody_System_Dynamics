@@ -18,10 +18,7 @@ class Force:
         return F
 
     def get_wind_force(self, t):
-        if t < 2.:
-            return np.zeros(2)
-        else:
-            return np.array([50.e3 * (t - 2.)/10., 0.])
+        return np.array([50.e3 * (t)/50., 0.])
 
     def get_indices(self):
         return self.body1, self.body2

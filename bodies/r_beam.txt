@@ -6,4 +6,4 @@
 +dik 0. 0.
 +pos 2.5 4.330127
 +angle -1.0472
-+bodies_names r_beam_l r_beam_r
++bodies_names r_beam_l 2 r_beam_r 4 r_beam_c 0

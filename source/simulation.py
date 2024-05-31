@@ -41,6 +41,7 @@ class Simulation:
         parser.add_argument('+forces', dest='forces', type=str, nargs='+')
         parser.add_argument('+dis', dest='dis', type=float, nargs='+')
         parser.add_argument('+save_forces', dest='s_force', type=bool, default=False)
+        parser.add_argument('+save_positions', dest='s_pos', type=str, nargs='+', default=[])
         args = parser.parse_known_args(SETTINGS.split())[0]
 
         self.g[0] = args.gx
@@ -48,7 +49,7 @@ class Simulation:
         self.t0 = args.t0
         self.tf = args.tf
 
-        self.system = System(args.N_bodies, self.g, args.s_force, savedir+'forces.txt')
+        self.system = System(args.N_bodies, self.g, args.s_force, savedir+'forces.txt', savedir+'positions.txt', np.array(args.s_pos))
 
         self.y0 = np.zeros(2 * args.N_bodies)
 
@@ -78,7 +79,7 @@ class Simulation:
         self.system.set_forces(args.forces, np.array(args.dis))
 
     def run(self):
-        sol = solve_ivp(self.system.RHS, (self.t0, self.tf), self.y0, method='Radau', max_step=1e-1)
+        sol = solve_ivp(self.system.RHS, (self.t0, self.tf), self.y0, method='Radau', max_step=1)
         if self.system.save_forces:
             self.system.force_file.close()
 
@@ -96,20 +97,3 @@ class Simulation:
 
         np.savetxt(savedir + 'q.txt', q)
         np.savetxt(savedir + 'qd.txt', qd)
-
-        styles = ['-', '--', '-.']
-
-        fig, ax = plt.subplots(figsize=(13, 8))
-        for i in range(N):
-            ax.plot(sol.t, sol.y[i], linestyle=styles[i%3], label=f'q[{i + 1}]')
-        ax.grid()
-        ax.legend(loc='center left')
-        fig.savefig('./images/q_explose.pdf', format='pdf')
-
-        fig, ax = plt.subplots(figsize=(13, 8))
-        for i in range(N, 2*N):
-            ax.plot(sol.t, sol.y[i], linestyle=styles[i%3], label=f'qd[{i - N + 1}]')
-        ax.grid()
-        ax.legend(loc='center left')
-        fig.savefig('./images/qd_explose.pdf', format='pdf')
-        plt.show()
